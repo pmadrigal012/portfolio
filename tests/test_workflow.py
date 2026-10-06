@@ -73,6 +73,10 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(len(app.exception),0)
         self.assertEqual(storage.rows('SELECT * FROM incidents')[0]['status'],'Closed')
         self.assertIn('Follow-up saved successfully.', [message.value for message in app.success])
+        self.assertEqual(app.text_area[0].value, '')
+        history = storage.rows('SELECT * FROM updates ORDER BY id')
+        app.button[0].click().run()
+        self.assertEqual(storage.rows('SELECT * FROM updates ORDER BY id'), history)
 
     def test_close_button_saves_form_and_updates_dashboard(self):
         from streamlit.testing.v1 import AppTest
@@ -91,6 +95,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(next(b for b in app.button if b.label == 'Close repair').disabled)
         self.assertEqual(app.success[0].value, 'This repair is closed.')
         self.assertIn('Repair closed successfully.', [message.value for message in app.success])
+        self.assertEqual(app.text_area[0].value, '')
         app.sidebar.radio[0].set_value('Maintenance requests').run()
         self.assertEqual(app.metric[0].value, '0')
 
@@ -118,6 +123,16 @@ class WorkflowTest(unittest.TestCase):
             storage.save_incident(1,'Closed',999,'',None,'Should not be saved')
         self.assertEqual(storage.rows('SELECT * FROM incidents')[0]['status'], 'Find a provider')
         self.assertEqual(storage.rows('SELECT * FROM updates'), [])
+
+    def test_last_activity_changes_only_when_data_changes(self):
+        storage.add_incident('Demo','Long-term','Leak','Roofing and gutters','High')
+        self.assertIsNotNone(storage.rows('SELECT * FROM incidents')[0]['last_activity'])
+        with storage.connect() as db:
+            db.execute("UPDATE incidents SET last_activity='2020-01-01 00:00:00'")
+        storage.save_incident(1,'Find a provider',None,'',None,'')
+        self.assertEqual(storage.rows('SELECT * FROM incidents')[0]['last_activity'], '2020-01-01 00:00:00')
+        storage.save_incident(1,'Find a provider',None,'Tuesday',None,'')
+        self.assertNotEqual(storage.rows('SELECT * FROM incidents')[0]['last_activity'], '2020-01-01 00:00:00')
 
 if __name__ == '__main__':
     unittest.main()

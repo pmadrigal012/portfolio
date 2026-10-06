@@ -28,6 +28,8 @@ Open the address Streamlit prints on your computer. Press Ctrl+C to stop the app
 
 Status changes and provider assignments, reassignments, and removals are recorded automatically in **Follow-up history**, with UTC timestamps. Saving unchanged values does not create duplicate change events. Your manual notes are recorded separately. Automatic history starts with new changes; it does not reconstruct earlier actions.
 
+After a successful save, the follow-up note box clears while the saved note remains in history. **Last activity (UTC)** shows request creation or the latest saved change or note. Saving unchanged values does not refresh this date. Older requests use their latest recorded history date when available; otherwise they show **Not recorded**.
+
 The WhatsApp button opens a draft for you to review and send manually. It does not confirm delivery or receive replies. Use your own or fictional numbers when testing.
 
 ## Code structure

@@ -37,7 +37,7 @@ if page == 'Maintenance requests':
     state = st.selectbox('Filter by status',['All']+store.STATUSES)
     visible = [i for i in incidents if state=='All' or i['status']==state]
     if visible:
-        st.dataframe([{'Request ID':i['id'],'Property':i['property'],'Problem':i['description'],'Priority':i['priority'],'Status':i['status']} for i in visible],hide_index=True)
+        st.dataframe([{'Request ID':i['id'],'Property':i['property'],'Problem':i['description'],'Priority':i['priority'],'Status':i['status'],'Last activity (UTC)':i['last_activity'] or 'Not recorded'} for i in visible],hide_index=True)
     else:
         st.write('No requests to display.')
 
@@ -79,13 +79,16 @@ else:
     else:
         st.warning('You need a new contact for this specialty. Add them to your directory when you find one.')
     choices = {None:'Unassigned / looking for a contact',**{p['id']:p['name'] for p in providers}}
+    note_key = f'followup_note_{id}'
+    if st.session_state.pop('clear_followup_note', None) == id:
+        st.session_state[note_key] = ''
     with st.form('followup'):
         status = st.selectbox('Status',store.STATUSES,index=store.STATUSES.index(item['status']))
         assigned = st.selectbox('Assigned provider',list(choices),index=list(choices).index(item['provider_id']) if item['provider_id'] in choices else 0,format_func=choices.get)
         visit = st.text_input('Visit time agreed with provider and tenant',value=item['visit'])
         record_cost = st.checkbox('Record cost in Costa Rican colones',value=item['cost'] is not None)
         cost = st.number_input('Cost (CRC)',min_value=0.0,value=float(item['cost'] or 0),step=1000.0)
-        note = st.text_area('Add a follow-up note',placeholder='Contacted Ana. She is available Tuesday; tenant confirmation is pending.')
+        note = st.text_area('Add a follow-up note',placeholder='Contacted Ana. She is available Tuesday; tenant confirmation is pending.', key=note_key)
         st.caption('Once you have verified the repair, use Close repair to save these details and close the request.')
         save = st.form_submit_button('Save follow-up')
         close = st.form_submit_button('Close repair', type='primary', disabled=item['status'] == 'Closed')
@@ -95,6 +98,7 @@ else:
             if close:
                 final_note = f'Repair verified and closed. {note}'.strip()
             store.save_incident(id,final_status,assigned,visit.strip(),cost if record_cost else None,final_note)
+            st.session_state['clear_followup_note'] = id
             # Keep confirmation across the refresh, only after the database save succeeds.
             st.session_state['followup_confirmation'] = (
                 id, 'Repair closed successfully.' if close else 'Follow-up saved successfully.'
