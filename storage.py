@@ -50,6 +50,25 @@ def save_incident(id, status, provider_id, visit, cost, note):
     if status not in STATUSES or (cost is not None and cost < 0):
         raise ValueError('Invalid status or cost')
     with connect() as db:
+        # Read and write under one transaction so the history matches the saved change.
+        db.execute('BEGIN IMMEDIATE')
+        previous = db.execute('SELECT status,provider_id FROM incidents WHERE id=?', (id,)).fetchone()
+        if previous is None:
+            raise ValueError('Maintenance request not found')
+        events = []
+        if previous['status'] != status:
+            events.append(f"Status changed from {previous['status']} to {status}.")
+        if previous['provider_id'] != provider_id:
+            def provider_name(provider):
+                if provider is None:
+                    return 'Unassigned'
+                row = db.execute('SELECT name FROM providers WHERE id=?', (provider,)).fetchone()
+                if row is None:
+                    raise ValueError('Service provider not found')
+                return f"{row['name']} (#{provider})"
+            events.append(f"Provider changed from {provider_name(previous['provider_id'])} to {provider_name(provider_id)}.")
         db.execute('UPDATE incidents SET status=?,provider_id=?,visit=?,cost=? WHERE id=?', (status,provider_id,visit,cost,id))
+        for event in events:
+            db.execute('INSERT INTO updates (incident_id,note) VALUES (?,?)', (id,event))
         if note.strip():
             db.execute('INSERT INTO updates (incident_id,note) VALUES (?,?)', (id,note.strip()))

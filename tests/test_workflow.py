@@ -27,7 +27,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(saved['status'],'Closed')
         self.assertEqual(saved['provider_id'],p['id'])
         self.assertEqual(saved['cost'],25000)
-        self.assertEqual(len(storage.rows('SELECT * FROM updates')),2)
+        self.assertEqual(len(storage.rows('SELECT * FROM updates')),5)
 
     def test_invalid_updates(self):
         with self.assertRaises(ValueError):
@@ -86,11 +86,36 @@ class WorkflowTest(unittest.TestCase):
         saved = storage.rows('SELECT * FROM incidents')[0]
         self.assertEqual(saved['status'], 'Closed')
         self.assertEqual(saved['cost'], 25000)
-        self.assertIn('Tenant confirmed', storage.rows('SELECT * FROM updates')[0]['note'])
+        self.assertTrue(any('Tenant confirmed' in row['note'] for row in storage.rows('SELECT * FROM updates')))
         self.assertTrue(next(b for b in app.button if b.label == 'Close repair').disabled)
         self.assertEqual(app.success[0].value, 'This repair is closed.')
         app.sidebar.radio[0].set_value('Maintenance requests').run()
         self.assertEqual(app.metric[0].value, '0')
+
+    def test_history_tracks_changes_without_duplicate_events(self):
+        storage.add_provider('Ana','Roofing and gutters','San José','50612345678','')
+        storage.add_provider('Sam','Roofing and gutters','San José','50612345679','')
+        storage.add_incident('Demo','Long-term','Leak','Roofing and gutters','High')
+        storage.save_incident(1,'Schedule a visit',1,'Tuesday',None,'Confirmed')
+        events = storage.rows('SELECT * FROM updates ORDER BY id')
+        self.assertEqual([row['note'] for row in events], [
+            'Status changed from Find a provider to Schedule a visit.',
+            'Provider changed from Unassigned to Ana (#1).', 'Confirmed'])
+        self.assertTrue(all(row['created'] for row in events))
+        storage.save_incident(1,'Schedule a visit',1,'Tuesday',None,'  ')
+        self.assertEqual(storage.rows('SELECT * FROM updates ORDER BY id'), events)
+        storage.save_incident(1,'Schedule a visit',2,'Tuesday',None,'')
+        storage.save_incident(1,'Schedule a visit',None,'Tuesday',None,'')
+        self.assertEqual([r['note'] for r in storage.rows('SELECT * FROM updates ORDER BY id')][-2:], [
+            'Provider changed from Ana (#1) to Sam (#2).',
+            'Provider changed from Sam (#2) to Unassigned.'])
+
+    def test_invalid_provider_rolls_back_status_and_history(self):
+        storage.add_incident('Demo','Long-term','Leak','Roofing and gutters','High')
+        with self.assertRaises(ValueError):
+            storage.save_incident(1,'Closed',999,'',None,'Should not be saved')
+        self.assertEqual(storage.rows('SELECT * FROM incidents')[0]['status'], 'Find a provider')
+        self.assertEqual(storage.rows('SELECT * FROM updates'), [])
 
 if __name__ == '__main__':
     unittest.main()

@@ -26,6 +26,8 @@ Open the address Streamlit prints on your computer. Press Ctrl+C to stop the app
 4. Assign a provider and record a visit time confirmed with the tenant.
 5. Record the cost and repair verification, then click **Close repair**. This saves the form, closes the request, and records a closure note.
 
+Status changes and provider assignments, reassignments, and removals are recorded automatically in **Follow-up history**, with UTC timestamps. Saving unchanged values does not create duplicate change events. Your manual notes are recorded separately. Automatic history starts with new changes; it does not reconstruct earlier actions.
+
 The WhatsApp button opens a draft for you to review and send manually. It does not confirm delivery or receive replies. Use your own or fictional numbers when testing.
 
 ## Code structure
