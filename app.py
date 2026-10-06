@@ -95,7 +95,14 @@ else:
             if close:
                 final_note = f'Repair verified and closed. {note}'.strip()
             store.save_incident(id,final_status,assigned,visit.strip(),cost if record_cost else None,final_note)
+            # Keep confirmation across the refresh, only after the database save succeeds.
+            st.session_state['followup_confirmation'] = (
+                id, 'Repair closed successfully.' if close else 'Follow-up saved successfully.'
+            )
             st.rerun()
+        confirmation = st.session_state.pop('followup_confirmation', None)
+        if confirmation and confirmation[0] == id:
+            st.success(confirmation[1])
     st.subheader('Prepare a message')
     if providers:
         recipient = st.selectbox('Contact to ask about availability',providers,format_func=lambda p:f"{p['name']} · {p['specialty']}")

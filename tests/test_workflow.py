@@ -72,6 +72,7 @@ class WorkflowTest(unittest.TestCase):
         app.button[0].click().run()
         self.assertEqual(len(app.exception),0)
         self.assertEqual(storage.rows('SELECT * FROM incidents')[0]['status'],'Closed')
+        self.assertIn('Follow-up saved successfully.', [message.value for message in app.success])
 
     def test_close_button_saves_form_and_updates_dashboard(self):
         from streamlit.testing.v1 import AppTest
@@ -89,6 +90,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertTrue(any('Tenant confirmed' in row['note'] for row in storage.rows('SELECT * FROM updates')))
         self.assertTrue(next(b for b in app.button if b.label == 'Close repair').disabled)
         self.assertEqual(app.success[0].value, 'This repair is closed.')
+        self.assertIn('Repair closed successfully.', [message.value for message in app.success])
         app.sidebar.radio[0].set_value('Maintenance requests').run()
         self.assertEqual(app.metric[0].value, '0')
 
