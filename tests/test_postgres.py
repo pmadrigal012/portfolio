@@ -9,11 +9,14 @@ class PostgresTest(unittest.TestCase):
     def setUp(self):
         self.env = patch.dict(os.environ, {'DATABASE_URL': os.environ['TEST_DATABASE_URL']})
         self.env.start()
+        self.access = patch('access.require_access')
+        self.access.start()
         storage.initialize()
         with storage.connect() as db:
             db.execute('TRUNCATE updates, incidents, providers RESTART IDENTITY')
 
     def tearDown(self):
+        self.access.stop()
         self.env.stop()
 
     def test_persistence_history_and_rollback(self):

@@ -4,8 +4,10 @@ from urllib.parse import quote
 import streamlit as st
 import storage as store
 import os
+import access
 
 st.set_page_config(page_title='RentalOps', page_icon='🏠', layout='wide')
+access.require_access()
 # Streamlit Cloud secrets stay outside Git; storage also supports environment variables.
 if 'DATABASE_URL' not in os.environ:
     try:

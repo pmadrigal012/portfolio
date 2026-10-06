@@ -9,9 +9,13 @@ class WorkflowTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.env = patch.dict(os.environ, {'RENTAL_DB_PATH':self.temp.name+'/test.db', 'DATABASE_URL': ''})
         self.env.start()
+        # Workflow tests use an approved session; access restrictions have separate tests.
+        self.access = patch('access.require_access')
+        self.access.start()
         storage.initialize()
 
     def tearDown(self):
+        self.access.stop()
         self.env.stop()
         self.temp.cleanup()
 

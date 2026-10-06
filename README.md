@@ -18,6 +18,8 @@ python3 -m venv .venv
 
 Open the address Streamlit prints on your computer. Press Ctrl+C to stop the app.
 
+Google sign-in must be configured before you can access the application. Follow [Google sign-in setup](GOOGLE_SIGN_IN.md). For local development, use `http://localhost:8501/oauth2callback` as the redirect URI in both Google and `.streamlit/secrets.toml`. There is no public-access bypass.
+
 ## Try the workflow
 
 1. In **Service providers**, add a fictional contact with the **Roofing and gutters** specialty.
@@ -35,6 +37,7 @@ The WhatsApp button opens a draft for you to review and send manually. It does n
 ## Code structure
 
 - `app.py`: Streamlit screens, forms, and WhatsApp links.
+- `access.py`: Google sign-in gate and verified-email authorization.
 - `storage.py`: parameterized SQL queries and SQLite transactions.
 - `data/rentals.db`: local records, excluded from Git. Set `RENTAL_DB_PATH` to use another location.
 - `tests/test_workflow.py`: persistence, validation, and interface workflow tests.
@@ -77,7 +80,7 @@ These checks report failures but do not block Streamlit deployment from `main`. 
 
 The prototype records requests, contacts, notes, visits, and costs. It does not store videos, interpret reports with AI, receive WhatsApp messages, or automate notifications. Dashboard counters reflect recorded state rather than automated monitoring.
 
-The owner has deployed the prototype to Streamlit Community Cloud and verified the repair closure flow in a browser. It has no authentication. Use fictional data for demonstrations. Hosting real records requires access control, persistent storage, data protection, and backups. Temporary hosting disks can lose the database. Operational monitoring is not implemented yet.
+The owner has deployed the prototype to Streamlit Community Cloud and verified repair closure and Neon persistence after a reboot. Google sign-in and a verified-email allowlist protect application access once configured; without configuration, records remain blocked. The real Google login flow still requires hosted browser validation. All approved users share the same records. Continue using fictional data until data protection, backups, and access configuration have been verified. Operational monitoring is not implemented yet.
 
 ## Roadmap
 
