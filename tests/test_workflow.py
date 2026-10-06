@@ -7,7 +7,7 @@ import storage
 class WorkflowTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.env = patch.dict(os.environ, {'RENTAL_DB_PATH':self.temp.name+'/test.db'})
+        self.env = patch.dict(os.environ, {'RENTAL_DB_PATH':self.temp.name+'/test.db', 'DATABASE_URL': ''})
         self.env.start()
         storage.initialize()
 

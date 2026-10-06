@@ -1,16 +1,48 @@
 """Local storage for maintenance requests and service providers."""
 import os
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
 
 STATUSES = ['Find a provider', 'Awaiting response', 'Schedule a visit', 'Repair in progress', 'Verify repair', 'Closed']
 
+def database_url():
+    return os.environ.get('DATABASE_URL', '').strip()
+
+
+class PostgresConnection:
+    """Adapt our parameterized queries to PostgreSQL; never interpolate user values."""
+    def __init__(self, db):
+        self.db = db
+
+    def execute(self, sql, args=()):
+        sql = sql.replace('?', '%s').replace('CURRENT_TIMESTAMP',
+            "to_char(CURRENT_TIMESTAMP AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS')")
+        return self.db.execute(sql, args)
+
+    def executescript(self, sql):
+        for statement in sql.split(';'):
+            if statement.strip():
+                self.execute(statement.replace('INTEGER PRIMARY KEY', 'SERIAL PRIMARY KEY'))
+
+
+@contextmanager
 def connect():
+    if database_url():
+        import psycopg
+        from psycopg.rows import dict_row
+        with psycopg.connect(database_url(), row_factory=dict_row, connect_timeout=10) as db:
+            yield PostgresConnection(db)
+        return
     path = Path(os.environ.get('RENTAL_DB_PATH', 'data/rentals.db'))
     path.parent.mkdir(parents=True, exist_ok=True)
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
-    return db
+    try:
+        with db:
+            yield db
+    finally:
+        db.close()
 
 def initialize():
     with connect() as db:
@@ -27,7 +59,10 @@ def initialize():
           id INTEGER PRIMARY KEY, incident_id INTEGER NOT NULL,
           note TEXT NOT NULL, created TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP);
         ''')
-        columns = {row['name'] for row in db.execute('PRAGMA table_info(incidents)')}
+        if database_url():
+            columns = {row['name'] for row in db.execute("SELECT column_name AS name FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='incidents'")}
+        else:
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(incidents)')}
         if 'last_activity' not in columns:
             db.execute('ALTER TABLE incidents ADD COLUMN last_activity TEXT')
             # Recover known history dates without inventing dates for older requests.
@@ -56,8 +91,10 @@ def save_incident(id, status, provider_id, visit, cost, note):
         raise ValueError('Invalid status or cost')
     with connect() as db:
         # Read and write under one transaction so the history matches the saved change.
-        db.execute('BEGIN IMMEDIATE')
-        previous = db.execute('SELECT status,provider_id,visit,cost FROM incidents WHERE id=?', (id,)).fetchone()
+        if not database_url():
+            db.execute('BEGIN IMMEDIATE')
+        lock = ' FOR UPDATE' if database_url() else ''
+        previous = db.execute('SELECT status,provider_id,visit,cost FROM incidents WHERE id=?' + lock, (id,)).fetchone()
         if previous is None:
             raise ValueError('Maintenance request not found')
         events = []

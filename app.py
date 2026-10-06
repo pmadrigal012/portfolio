@@ -3,12 +3,26 @@ import re
 from urllib.parse import quote
 import streamlit as st
 import storage as store
+import os
 
 st.set_page_config(page_title='RentalOps', page_icon='🏠', layout='wide')
-store.initialize()
+# Streamlit Cloud secrets stay outside Git; storage also supports environment variables.
+if 'DATABASE_URL' not in os.environ:
+    try:
+        url = st.secrets.get('DATABASE_URL')
+        if url:
+            os.environ['DATABASE_URL'] = url
+    except FileNotFoundError:
+        pass
+try:
+    store.initialize()
+except Exception:
+    st.error('Unable to connect to storage. Check the database configuration and try again. No connection details are displayed here.')
+    st.stop()
 st.title('🏠 RentalOps')
 st.caption('Maintenance and service providers for short-term and long-term rentals.')
 st.info('Local prototype. Messages and confirmations are recorded manually.')
+st.sidebar.caption('Storage: PostgreSQL (external database)' if store.database_url() else 'Storage: local SQLite — demo records may be lost on hosting restarts.')
 specialties = ['Plumbing / leaks', 'Electrical', 'Roofing and gutters', 'Cleaning', 'Locksmith', 'General / to be determined']
 page = st.sidebar.radio('Management', ['Maintenance requests', 'Details and follow-up', 'Service providers'])
 providers = store.rows('SELECT * FROM providers ORDER BY name')

@@ -38,6 +38,7 @@ The WhatsApp button opens a draft for you to review and send manually. It does n
 - `storage.py`: parameterized SQL queries and SQLite transactions.
 - `data/rentals.db`: local records, excluded from Git. Set `RENTAL_DB_PATH` to use another location.
 - `tests/test_workflow.py`: persistence, validation, and interface workflow tests.
+- `tests/test_postgres.py`: integration tests against a dedicated disposable PostgreSQL database. Never point `TEST_DATABASE_URL` at business data: these tests clear their tables.
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
@@ -45,9 +46,28 @@ The WhatsApp button opens a draft for you to review and send manually. It does n
 
 Records survive restarts if the SQLite file is retained. Note timestamps use UTC; visit times are free-form text agreed by the people involved. Existing Spanish category and status labels are migrated automatically; user-written descriptions and notes are preserved.
 
+## Persistent storage with Neon
+
+RentalOps uses PostgreSQL when `DATABASE_URL` is configured; otherwise it uses local SQLite. An invalid PostgreSQL connection does not silently fall back to SQLite. The sidebar shows which storage is active. External PostgreSQL keeps records outside Streamlit's temporary filesystem, but backups and retention depend on your database provider and plan.
+
+1. Create an account at https://neon.tech and a PostgreSQL project for the demo. Review the current plan limits and pricing before selecting a plan.
+2. In Neon's connection dialog, copy the Python/libpq PostgreSQL connection string. Keep its supplied TLS settings (including `sslmode=require` and `channel_binding=require` when provided). Do not paste it into chat, source code, or GitHub.
+3. In your Streamlit Community Cloud app settings, open **Secrets** and add the following entry, replacing the placeholder privately:
+
+   ```toml
+   DATABASE_URL = "YOUR_NEON_CONNECTION_STRING"
+   ```
+
+4. Save and let the app restart. The sidebar should show **Storage: PostgreSQL (external database)**. RentalOps creates its tables automatically.
+5. Create a fictional request and note. Reboot the app using Streamlit's app controls, then check that both still exist. This is the hosted persistence acceptance check; it must be completed after configuring Neon.
+
+For local use, set `DATABASE_URL` as an environment variable or put the entry in `.streamlit/secrets.toml` (ignored by Git). The SQLite tests continue to run with a temporary database; the PostgreSQL integration test is skipped locally unless `TEST_DATABASE_URL` is set. GitHub Actions supplies a disposable PostgreSQL service so that test runs in CI.
+
+Switching storage does not import existing SQLite records or delete the old file. The new database starts empty. If you need to retain old records, export them before switching and plan a separate migration. Continue using fictional data: database persistence does not add authentication or restrict access to the public app.
+
 ## Automated checks in GitHub
 
-The workflow in `.github/workflows/tests.yml` runs on every push and pull request. It installs Python 3.12 and the dependencies, then runs the existing persistence, validation, and Streamlit interface tests with temporary databases. No business records or external service credentials are needed.
+The workflow in `.github/workflows/tests.yml` runs on every push and pull request. It installs Python 3.12 and the dependencies, then runs the persistence, validation, and Streamlit interface tests with temporary SQLite databases and a disposable PostgreSQL service. No business records or external service credentials are needed.
 
 To see a result, open the repository's **Actions** tab, select **Python tests**, and open the run for your commit. A green check means that run passed; a red cross means a step failed. Open **Python 3.12 tests → Run workflow and interface tests** to read the test output. You can also start a run using **Run workflow**.
 
