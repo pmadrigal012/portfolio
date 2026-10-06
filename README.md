@@ -45,18 +45,27 @@ The WhatsApp button opens a draft for you to review and send manually. It does n
 
 Records survive restarts if the SQLite file is retained. Note timestamps use UTC; visit times are free-form text agreed by the people involved. Existing Spanish category and status labels are migrated automatically; user-written descriptions and notes are preserved.
 
+## Automated checks in GitHub
+
+The workflow in `.github/workflows/tests.yml` runs on every push and pull request. It installs Python 3.12 and the dependencies, then runs the existing persistence, validation, and Streamlit interface tests with temporary databases. No business records or external service credentials are needed.
+
+To see a result, open the repository's **Actions** tab, select **Python tests**, and open the run for your commit. A green check means that run passed; a red cross means a step failed. Open **Python 3.12 tests → Run workflow and interface tests** to read the test output. You can also start a run using **Run workflow**.
+
+These checks report failures but do not block Streamlit deployment from `main`. To gate future releases, use pull requests and configure a branch rule requiring **Python 3.12 tests** to pass before merging. Branch protection has not been configured yet. Automated tests also do not replace checking the deployed application in a browser.
+
 ## Current scope
 
 The prototype records requests, contacts, notes, visits, and costs. It does not store videos, interpret reports with AI, receive WhatsApp messages, or automate notifications. Dashboard counters reflect recorded state rather than automated monitoring.
 
-This local prototype has no authentication. Use fictional data for demonstrations. Hosting real records requires access control, persistent storage, data protection, and backups. Temporary hosting disks can lose the database. Public deployment and operational monitoring are not implemented yet.
+The owner has deployed the prototype to Streamlit Community Cloud and verified the repair closure flow in a browser. It has no authentication. Use fictional data for demonstrations. Hosting real records requires access control, persistent storage, data protection, and backups. Temporary hosting disks can lose the database. Operational monitoring is not implemented yet.
 
 ## Roadmap
 
-1. Validate an end-to-end maintenance case with the property owner.
-2. Deploy a demonstration using fictional data.
-3. Add operational metrics and alerts.
-4. Integrate the official WhatsApp API.
-5. Evaluate AI-assisted extraction of structured maintenance requests.
+1. Continue validating maintenance workflows with the property owner.
+2. Add persistent storage and access control for business use.
+3. Make automated checks required before merging release changes.
+4. Add operational metrics and alerts.
+5. Integrate the official WhatsApp API.
+6. Evaluate AI-assisted extraction of structured maintenance requests.
 
 The portfolio will document the problem, implementation decisions, deployment, and measured outcomes as those stages are completed.
