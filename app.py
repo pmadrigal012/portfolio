@@ -71,6 +71,8 @@ else:
     st.subheader(item['property'])
     st.write(item['description'])
     st.caption(f"{item['rental_type']} · {item['specialty']} · Priority {item['priority']}")
+    if item['status'] == 'Closed':
+        st.success('This repair is closed.')
     matches = [p['name'] for p in providers if p['specialty']==item['specialty']]
     if matches:
         st.write('Providers with this specialty: '+', '.join(matches))
@@ -84,8 +86,15 @@ else:
         record_cost = st.checkbox('Record cost in Costa Rican colones',value=item['cost'] is not None)
         cost = st.number_input('Cost (CRC)',min_value=0.0,value=float(item['cost'] or 0),step=1000.0)
         note = st.text_area('Add a follow-up note',placeholder='Contacted Ana. She is available Tuesday; tenant confirmation is pending.')
-        if st.form_submit_button('Save follow-up'):
-            store.save_incident(id,status,assigned,visit.strip(),cost if record_cost else None,note)
+        st.caption('Once you have verified the repair, use Close repair to save these details and close the request.')
+        save = st.form_submit_button('Save follow-up')
+        close = st.form_submit_button('Close repair', type='primary', disabled=item['status'] == 'Closed')
+        if save or close:
+            final_status = 'Closed' if close else status
+            final_note = note
+            if close:
+                final_note = f'Repair verified and closed. {note}'.strip()
+            store.save_incident(id,final_status,assigned,visit.strip(),cost if record_cost else None,final_note)
             st.rerun()
     st.subheader('Prepare a message')
     if providers:

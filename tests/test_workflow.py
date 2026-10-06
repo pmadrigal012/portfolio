@@ -73,5 +73,24 @@ class WorkflowTest(unittest.TestCase):
         self.assertEqual(len(app.exception),0)
         self.assertEqual(storage.rows('SELECT * FROM incidents')[0]['status'],'Closed')
 
+    def test_close_button_saves_form_and_updates_dashboard(self):
+        from streamlit.testing.v1 import AppTest
+        storage.add_incident('Demo property', 'Long-term', 'Leak', 'Roofing and gutters', 'High')
+        app = AppTest.from_file('app.py').run()
+        app.sidebar.radio[0].set_value('Details and follow-up').run()
+        app.text_area[0].set_value('Tenant confirmed the leak is fixed.')
+        app.checkbox[0].check()
+        app.number_input[0].set_value(25000)
+        next(b for b in app.button if b.label == 'Close repair').click().run()
+        self.assertEqual(len(app.exception), 0)
+        saved = storage.rows('SELECT * FROM incidents')[0]
+        self.assertEqual(saved['status'], 'Closed')
+        self.assertEqual(saved['cost'], 25000)
+        self.assertIn('Tenant confirmed', storage.rows('SELECT * FROM updates')[0]['note'])
+        self.assertTrue(next(b for b in app.button if b.label == 'Close repair').disabled)
+        self.assertEqual(app.success[0].value, 'This repair is closed.')
+        app.sidebar.radio[0].set_value('Maintenance requests').run()
+        self.assertEqual(app.metric[0].value, '0')
+
 if __name__ == '__main__':
     unittest.main()

@@ -24,7 +24,7 @@ Open the address Streamlit prints on your computer. Press Ctrl+C to stop the app
 2. In **Maintenance requests**, report a leak at a demo property.
 3. In **Details and follow-up**, record the contacts you approached and their replies in follow-up notes.
 4. Assign a provider and record a visit time confirmed with the tenant.
-5. Record the cost and repair verification, then change the status to **Closed**.
+5. Record the cost and repair verification, then click **Close repair**. This saves the form, closes the request, and records a closure note.
 
 The WhatsApp button opens a draft for you to review and send manually. It does not confirm delivery or receive replies. Use your own or fictional numbers when testing.
 
